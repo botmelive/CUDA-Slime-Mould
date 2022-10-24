@@ -4,15 +4,38 @@
  #include <stdio.h>
  #define W 1920
  #define H 1080
- #define NUM_AGENTS 5000
+ #define NUM_AGENTS 5000000
 
  #define DELTA 5 // pixel increment for arrow keys
  #define TITLE_STRING "flashlight: distance image display app"
  int2 loc = {W/2, H/2};
  bool dragMode = false; // mouse tracking mode
+ float TurnSpeed = 0.45;
+ float SensorSpacing = 0.15;
 
  void keyboard(unsigned char key, int x, int y) {
-    if (key == 'a') dragMode = !dragMode; // toggle tracking mode
+    if (key == 'a'){
+      TurnSpeed += 0.05f;
+      if (TurnSpeed > 1) TurnSpeed = 1.0;
+    }
+
+    if (key == 's'){
+      TurnSpeed -= 0.05f;
+      if (TurnSpeed < 0) TurnSpeed = 0.0;
+    }
+
+    if (key == 'q'){
+      SensorSpacing += 0.05;
+      if (SensorSpacing > 1.0) SensorSpacing = 1.0;
+    }
+    
+    if (key == 'w'){
+      SensorSpacing -= 0.05;
+      if (SensorSpacing < 0) SensorSpacing = 0.0;
+    }
+
+    printf("Turn Speed: %f --- Sensor Spacing: %f\n", TurnSpeed, SensorSpacing);
+
     if (key == 27) exit(0);
     glutPostRedisplay();
  }
@@ -41,10 +64,12 @@
  }
 
  void printInstructions() {
-    printf("flashlight interactions\n");
-    printf("a: toggle mouse tracking mode\n");
-    printf("arrow keys: move ref location\n");
-    printf("esc: close graphics window\n");
+   printf("q: Sensor spacing +0.5\n");
+   printf("w: Sensor spacing -0.5\n"); 
+   printf("a: Turn speed +0.5\n"); 
+   printf("d: Turn speed -0.5\n"); 
+
+   printf("esc: close graphics window\n");
  }
 
  #endif

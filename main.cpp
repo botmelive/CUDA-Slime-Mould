@@ -29,7 +29,7 @@ void render() {
 	cudaGraphicsMapResources(1, &cuda_pbo_resource, 0);
 	size_t bufferSize = 0;
 	cudaGraphicsResourceGetMappedPointer((void **)&d_out, &bufferSize, cuda_pbo_resource);
-	kernelLauncherAgent(devStates, agents, NUM_AGENTS, d_out, W, H);
+	kernelLauncherAgent(devStates, agents, NUM_AGENTS, d_out, W, H, TurnSpeed, SensorSpacing);
 	kernelLauncher(d_out, W, H);
 	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
 }

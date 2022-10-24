@@ -9,12 +9,12 @@ struct float2;
 struct int2;
 
 typedef struct{
-	int x, y;
+	float x, y;
 	float angle;
  }Agent;
 
 void kernelLauncher(uchar4 *d_out, int w, int h);
-void kernelLauncherAgent(curandState*, Agent*, int, uchar4*, int, int);
+void kernelLauncherAgent(curandState*, Agent*, int, uchar4*, int, int, float, float);
 void KernelLauncherSetup(curandState*, Agent*, int, int, int);
 
 #endif
