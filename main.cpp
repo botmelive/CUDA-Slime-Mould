@@ -24,6 +24,10 @@ curandState *devStates;
 Agent *agents;
 struct cudaGraphicsResource *cuda_pbo_resource;
 
+// int frame = 0;
+// int time = 0;
+// int timebase = 0;
+
 void render() {
 	uchar4 *d_out = 0;
 	cudaGraphicsMapResources(1, &cuda_pbo_resource, 0);
@@ -95,6 +99,15 @@ void drawTexture() {
  }
 
  void idle(){
+	// frame++;
+	// time = glutGet(GLUT_ELAPSED_TIME);
+	// if (time - timebase > 1000) {
+	// 	printf("FPS:%4.2f",
+	// 		frame*1000.0/(time-timebase));
+	// 	timebase = time;
+	// 	frame = 0;
+	// }
+
 	glutPostRedisplay();
  }
 

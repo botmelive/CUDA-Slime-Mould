@@ -2,21 +2,21 @@
 
  #define INTERACTIONS_H
  #include <stdio.h>
- #define W 1920
- #define H 1080
- #define NUM_AGENTS 5000000
+ #define W 2560
+ #define H 1440
+ #define NUM_AGENTS 1000000
 
  #define DELTA 5 // pixel increment for arrow keys
  #define TITLE_STRING "flashlight: distance image display app"
  int2 loc = {W/2, H/2};
  bool dragMode = false; // mouse tracking mode
- float TurnSpeed = 0.45;
- float SensorSpacing = 0.15;
+ float TurnSpeed = 0.55;//0.35;
+ float SensorSpacing = 0.30;
 
  void keyboard(unsigned char key, int x, int y) {
     if (key == 'a'){
       TurnSpeed += 0.05f;
-      if (TurnSpeed > 1) TurnSpeed = 1.0;
+      if (TurnSpeed > 5) TurnSpeed = 5.0;
     }
 
     if (key == 's'){
@@ -64,12 +64,13 @@
  }
 
  void printInstructions() {
-   printf("q: Sensor spacing +0.5\n");
-   printf("w: Sensor spacing -0.5\n"); 
-   printf("a: Turn speed +0.5\n"); 
-   printf("d: Turn speed -0.5\n"); 
+  printf("AGENTS : %d\n", NUM_AGENTS);
+  printf("q: Sensor spacing +0.5\n");
+  printf("w: Sensor spacing -0.5\n"); 
+  printf("a: Turn speed +0.5\n"); 
+  printf("d: Turn speed -0.5\n"); 
 
-   printf("esc: close graphics window\n");
+  printf("esc: close graphics window\n");
  }
 
  #endif

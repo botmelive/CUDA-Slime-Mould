@@ -33,10 +33,10 @@
     float blurredCol = (sum / 9) / 255.0f;
     float color = d_out[i].x / 255.0f;
 
-    float diffuseWeight = 0.1f;
+    float diffuseWeight = 0.05f;
     blurredCol = color * (1 - diffuseWeight) + blurredCol * diffuseWeight;
 
-    float decayRate = 0.001f;
+    float decayRate = 0.02f;
     color = max(0.0, blurredCol - decayRate * 0.1f);
 
 
@@ -56,8 +56,8 @@ float sense(Agent agent, float sensorAngelOffset, uchar4* d_out, int w, int h){
     float sensorDirx = cosf(sensorAngle);
     float sensorDiry = sinf(sensorAngle);
 
-    int sensorCenterx = (agent.x * w) + sensorDirx * 1.0f;
-    int sensorCentery = (agent.y * h) + sensorDiry * 1.0f;
+    int sensorCenterx = (agent.x * w) + sensorDirx * 35;
+    int sensorCentery = (agent.y * h) + sensorDiry * 35;
 
     int sum = 0;
     int sensorSize = 1;
@@ -110,8 +110,8 @@ void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents
 
     float directionx = cosf(agent.angle);
     float directiony = sinf(agent.angle);
-    float newPosx = agent.x + directionx * 0.001f;// * 0.001f;
-    float newPosy = agent.y + directiony * 0.001f;// * 0.001f;
+    float newPosx = agent.x + directionx * 0.00025f;// * 0.001f;
+    float newPosy = agent.y + directiony * 0.00025f;// * 0.001f;
 
     if (newPosx < 0 || newPosx >= 1 || newPosy < 0 || newPosy >= 1){
         newPosx = min(1.0 - 0.005, max(0.0, newPosx));
@@ -140,11 +140,12 @@ void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i > numAgents) return;
     
-    curand_init(8954, i, 0, &devStates[i]);
+    curand_init(1548, i, 0, &devStates[i]);
 
     curandState localState = devStates[i];
+    float aspect = (float)w / h;
 
-    float r = 0.25f * sqrtf(curand_uniform(&localState)); // float from 0.0 to 1.0f
+    float r = 0.2f * sqrtf(curand_uniform(&localState)); // float from 0.0 to 1.0f
     float theta = curand_uniform(&localState) * 2.0f * 3.1415f;
 
     float x = 0.5f + r * cosf(theta);
@@ -155,7 +156,7 @@ void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents
     float angle = atan2f(dy, dx);
 
     agents[i].x = x;
-    agents[i].y = y;
+    agents[i].y = y * aspect - 0.40;
     agents[i].angle = angle;//curand_uniform(&localState);
  }
 
