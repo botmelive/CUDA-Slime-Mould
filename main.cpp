@@ -23,19 +23,19 @@ GLuint tex = 0; // OpenGL texture object
 curandState *devStates;
 Agent *agents;
 struct cudaGraphicsResource *cuda_pbo_resource;
+Settings settings;
+int oldTimeSinceStart = 0;
 
-// int frame = 0;
-// int time = 0;
-// int timebase = 0;
-
-void render() {
+void render(int deltaTime) {
+	settings.deltaTime = deltaTime * 0.001f;
 	uchar4 *d_out = 0;
 	cudaGraphicsMapResources(1, &cuda_pbo_resource, 0);
 	size_t bufferSize = 0;
 	cudaGraphicsResourceGetMappedPointer((void **)&d_out, &bufferSize, cuda_pbo_resource);
-	kernelLauncherAgent(devStates, agents, NUM_AGENTS, d_out, W, H, TurnSpeed, SensorSpacing);
-	kernelLauncher(d_out, W, H);
+	kernelLauncherAgent(devStates, agents, NUM_AGENTS, d_out, W, H, settings);
+	kernelLauncher(d_out, W, H, settings);
 	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
+	//printf(".%d .", deltaTime);
 }
 
 void drawTexture() {
@@ -52,7 +52,10 @@ void drawTexture() {
 }
 
  void display() {
-	render();
+	int timeSinceStart = glutGet(GLUT_ELAPSED_TIME);
+    int deltaTime = timeSinceStart - oldTimeSinceStart;
+	oldTimeSinceStart = timeSinceStart;
+	render(deltaTime);
 	drawTexture();
 	glutSwapBuffers();
  }
@@ -86,8 +89,6 @@ void drawTexture() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	cudaGraphicsGLRegisterBuffer(&cuda_pbo_resource, pbo,
 	cudaGraphicsMapFlagsWriteDiscard);
-
-	initAgents();
  }
 
  void exitfunc() {
@@ -99,17 +100,29 @@ void drawTexture() {
  }
 
  void idle(){
-	// frame++;
-	// time = glutGet(GLUT_ELAPSED_TIME);
-	// if (time - timebase > 1000) {
-	// 	printf("FPS:%4.2f",
-	// 		frame*1000.0/(time-timebase));
-	// 	timebase = time;
-	// 	frame = 0;
-	// }
-
 	glutPostRedisplay();
  }
+
+ void keyboard(unsigned char key, int x, int y) {
+  float incerement = 0.5f;
+  if (key == 'a')
+    settings.turnSpeed += incerement;
+
+  if (key == 's')
+    settings.turnSpeed -= incerement;
+
+  if (key == 'q')
+    settings.sensorAngleSpacing += incerement;
+ 
+  if (key == 'w')
+    settings.sensorAngleSpacing -= incerement;
+
+  printf("Turn Speed: %f --- Sensor Spacing: %f\n", settings.turnSpeed, settings.sensorAngleSpacing);
+  fflush(stdout);
+
+  if (key == 27) exit(0);
+  glutPostRedisplay();
+}
 
  int main(int argc, char** argv) {
 	printInstructions();
@@ -124,8 +137,11 @@ void drawTexture() {
 	glutDisplayFunc(display);
 	
 	initPixelBuffer();
+	initAgents();
 	
 	glutMainLoop();
 	atexit(exitfunc);
 	return 0;
  }
+
+

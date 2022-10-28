@@ -3,12 +3,16 @@
 
 #define TX 32
 #define TY 32
+#define DEG_TO_RAD 0.0174532925
 
- __device__
- unsigned char clip(int n) { return n > 255 ? 255 : (n < 0 ? 0 : n); }
+__device__
+unsigned char clip(int n) { return n > 255 ? 255 : (n < 0 ? 0 : n); }
+
+//  __device__
+// float saturate(float t) { return t > 1.0f ? 1.0f : t < 0.0f ? 0.0f : t;}
 
  __global__
- void distanceKernel(uchar4 *d_out, int w, int h) {
+ void distanceKernel(uchar4 *d_out, int w, int h, Settings settings) {
     const int c = blockIdx.x * blockDim.x + threadIdx.x;
     const int r = blockIdx.y * blockDim.y + threadIdx.y;
     
@@ -33,11 +37,11 @@
     float blurredCol = (sum / 9) / 255.0f;
     float color = d_out[i].x / 255.0f;
 
-    float diffuseWeight = 0.05f;
+    float diffuseWeight = __saturatef(settings.diffuseRate * settings.deltaTime);
     blurredCol = color * (1 - diffuseWeight) + blurredCol * diffuseWeight;
 
-    float decayRate = 0.02f;
-    color = max(0.0, blurredCol - decayRate * 0.1f);
+    float decayRate = settings.decayRate;
+    color = max(0.0, blurredCol - decayRate * settings.deltaTime);
 
 
     //d_out[i].x = sum;
@@ -51,16 +55,16 @@
  }
 
 __device__
-float sense(Agent agent, float sensorAngelOffset, uchar4* d_out, int w, int h){
+float sense(Agent agent, float sensorAngelOffset, uchar4* d_out, int w, int h, Settings settings){
     float sensorAngle = agent.angle + sensorAngelOffset;
     float sensorDirx = cosf(sensorAngle);
     float sensorDiry = sinf(sensorAngle);
 
-    int sensorCenterx = (agent.x * w) + sensorDirx * 35;
-    int sensorCentery = (agent.y * h) + sensorDiry * 35;
+    int sensorCenterx = (agent.x * w) + sensorDirx * settings.sensorOffsetDistance;
+    int sensorCentery = (agent.y * h) + sensorDiry * settings.sensorOffsetDistance;
 
     int sum = 0;
-    int sensorSize = 1;
+    int sensorSize = 1;//settings.sensorSize;
 
     for (int offsetX = -sensorSize; offsetX <= sensorSize; offsetX++){
         for (int offsetY = -sensorSize; offsetY <= sensorSize; offsetY++){
@@ -78,7 +82,7 @@ float sense(Agent agent, float sensorAngelOffset, uchar4* d_out, int w, int h){
 }
 
 __global__
-void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents, int w, int h, float TurnSpeed, float SensorSpacing) {
+void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents, int w, int h, Settings settings) {
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i > numAgents) return;
 
@@ -86,14 +90,14 @@ void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents
 
     Agent agent = agents[i];
 
-    float sensorAngleSpacing = SensorSpacing * 2 * 3.1415f;
+    float sensorAngleSpacing = settings.sensorAngleSpacing * DEG_TO_RAD;
 
-    float weightForward = sense(agent, 0, d_out, w, h);
-    float weightLeft = sense(agent, sensorAngleSpacing, d_out, w, h);
-    float weightRight = sense(agent, -sensorAngleSpacing, d_out, w, h);
+    float weightForward = sense(agent, 0, d_out, w, h, settings);
+    float weightLeft = sense(agent, sensorAngleSpacing, d_out, w, h, settings);
+    float weightRight = sense(agent, -sensorAngleSpacing, d_out, w, h, settings);
 
     float randomSteerStrength = curand_uniform(&localState);
-    float turnSpeed = TurnSpeed * 2 * 3.1415;
+    float turnSpeed = settings.turnSpeed * DEG_TO_RAD;
 
     if ((weightForward > weightLeft) && (weightForward > weightRight)){
         agent.angle += 0;
@@ -110,12 +114,12 @@ void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents
 
     float directionx = cosf(agent.angle);
     float directiony = sinf(agent.angle);
-    float newPosx = agent.x + directionx * 0.00025f;// * 0.001f;
-    float newPosy = agent.y + directiony * 0.00025f;// * 0.001f;
+    float newPosx = agent.x + directionx * settings.deltaTime * settings.agentSpeed;//0.00025f;
+    float newPosy = agent.y + directiony * settings.deltaTime * settings.agentSpeed;
 
     if (newPosx < 0 || newPosx >= 1 || newPosy < 0 || newPosy >= 1){
-        newPosx = min(1.0 - 0.005, max(0.0, newPosx));
-        newPosy = min(1.0 - 0.005, max(0.0, newPosy));
+        newPosx = min(1.0 - 0.001, max(0.0, newPosx));
+        newPosy = min(1.0 - 0.001, max(0.0, newPosy));
         agent.angle = curand_uniform(&localState) * 2.0f * 3.14159f;
     }
 
@@ -145,7 +149,7 @@ void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents
     curandState localState = devStates[i];
     float aspect = (float)w / h;
 
-    float r = 0.2f * sqrtf(curand_uniform(&localState)); // float from 0.0 to 1.0f
+    float r = 0.25f * sqrtf(curand_uniform(&localState)); // float from 0.0 to 1.0f
     float theta = curand_uniform(&localState) * 2.0f * 3.1415f;
 
     float x = 0.5f + r * cosf(theta);
@@ -160,16 +164,16 @@ void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents
     agents[i].angle = angle;//curand_uniform(&localState);
  }
 
- void kernelLauncher(uchar4 *d_out, int w, int h) {
+ void kernelLauncher(uchar4 *d_out, int w, int h, Settings settings) {
     const dim3 gridSize = dim3((w + TX - 1)/TX, (h + TY - 1)/TY);
     const dim3 blockSize(TX, TY);
-    distanceKernel<<<gridSize, blockSize>>>(d_out, w, h);
+    distanceKernel<<<gridSize, blockSize>>>(d_out, w, h, settings);
  }
 // TS = 0.1 SS = 0.2
- void kernelLauncherAgent(curandState* states, Agent* agents, int numAgents, uchar4* d_out, int w, int h, float turnSpeed, float sensorSpacing){
+ void kernelLauncherAgent(curandState* states, Agent* agents, int numAgents, uchar4* d_out, int w, int h, Settings settings){
     const dim3 gridSize(2048, 1, 1);
     const dim3 blockSize(512, 1, 1);
-    agentKernel<<<gridSize, blockSize>>>(states, agents, d_out, numAgents, w, h, turnSpeed, sensorSpacing);
+    agentKernel<<<gridSize, blockSize>>>(states, agents, d_out, numAgents, w, h, settings);
  }
 
  void KernelLauncherSetup(curandState* state, Agent* agents, int numAgents, int w, int h){
