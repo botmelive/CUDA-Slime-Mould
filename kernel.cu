@@ -12,7 +12,7 @@ unsigned char clip(int n) { return n > 255 ? 255 : (n < 0 ? 0 : n); }
 // float saturate(float t) { return t > 1.0f ? 1.0f : t < 0.0f ? 0.0f : t;}
 
  __global__
- void distanceKernel(uchar4 *d_out, int w, int h, Settings settings) {
+ void imagePass(uchar4 *d_out, int w, int h, Settings settings) {
     const int c = blockIdx.x * blockDim.x + threadIdx.x;
     const int r = blockIdx.y * blockDim.y + threadIdx.y;
     
@@ -167,7 +167,7 @@ void agentKernel(curandState* state, Agent* agents, uchar4* d_out, int numAgents
  void kernelLauncher(uchar4 *d_out, int w, int h, Settings settings) {
     const dim3 gridSize = dim3((w + TX - 1)/TX, (h + TY - 1)/TY);
     const dim3 blockSize(TX, TY);
-    distanceKernel<<<gridSize, blockSize>>>(d_out, w, h, settings);
+    imagePass<<<gridSize, blockSize>>>(d_out, w, h, settings);
  }
 // TS = 0.1 SS = 0.2
  void kernelLauncherAgent(curandState* states, Agent* agents, int numAgents, uchar4* d_out, int w, int h, Settings settings){
